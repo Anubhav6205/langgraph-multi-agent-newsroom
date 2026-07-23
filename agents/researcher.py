@@ -13,7 +13,11 @@ from logger import section, log_in, log_messages, log_out
 from tools.search_kb import search_kb
 
 tools = [web_search, search_kb]
-writer_model = init_chat_model("gpt-5-mini", temperature=0).bind_tools(tools)
+
+class Route(BaseModel):
+    content : str = Field(description = "Researched content")
+    cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
+researcher_model = init_chat_model("gpt-5-mini", temperature=0).bind_tools(tools)
 
 RESEARCHER_SYS = SystemMessage(
     "You are a Researcher agent in a newsroom. Your ONLY job is to gather accurate, "
@@ -37,7 +41,7 @@ def _agent(state: ResearchState):
     section("researcher.py :: _agent (inner LLM node)", "bold yellow")
     log_messages(state["messages"])
 
-    response = writer_model.invoke([f"{RESEARCHER_SYS} + Retry Count: {state['retryCount']}"] + state["messages"])
+    response = researcher_model.invoke([f"{RESEARCHER_SYS} + Retry Count: {state['retryCount']}"] + state["messages"])
 
     log_out("response type", type(response).__name__)
     log_out("tool_calls", response.tool_calls)
@@ -73,6 +77,7 @@ class Grade(BaseModel):
     relevant: bool = Field(
         description="True if the document provided are relevant to the query, else false."
     )
+    cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
 
 
 grader = init_chat_model("gpt-5-mini", temperature=0).with_structured_output(Grade)

@@ -8,6 +8,7 @@ from logger import section, log_messages, log_out
 class Route(BaseModel):
     """Who will act next"""
     next: Literal["researcher","writer","FINISH"] = Field(description="The next action will be taken up by which agent, or FINISH if the task is completed.")
+    cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
 
 
 
