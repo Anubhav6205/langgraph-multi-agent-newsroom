@@ -18,3 +18,4 @@ class ResearchState(TypedDict):
     query: str
     docs: list
     relevant: bool
+    retryCount: int

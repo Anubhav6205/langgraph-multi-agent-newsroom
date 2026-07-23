@@ -6,14 +6,14 @@ from graph import graph
 from logger import section, log_in, log_out
 
 task = (
-    "Write down 150 word brief on the current state of open-source AI Agent frameworks"
+    "Write down 150 word brief on how reranking works."
 )
 
 section("main.py :: graph.invoke START", "bold green")
 log_in("task", task)
 
 result = graph.invoke(
-    {"messages": [HumanMessage(content=task)]}, {"recursion_limit": 8}
+    {"messages": [HumanMessage(content=task)]}, {"recursion_limit": 15}
 )
 
 section("main.py :: graph.invoke END", "bold green")
