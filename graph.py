@@ -1,3 +1,4 @@
+from agents.editor import editor_agent
 from agents.researcher import researcher_agent
 
 from agents.supervisor import supervistor_agent
@@ -12,7 +13,7 @@ g = StateGraph(MessagesState)
 g.add_node("supervisor",supervistor_agent)
 g.add_node("researcher",researcher_agent)
 g.add_node("writer",writer_agent)
-
+g.add_node("editor",editor_agent)
 
 # Start node
 g.add_edge(START,"supervisor")
@@ -21,6 +22,7 @@ g.add_edge(START,"supervisor")
 # Adding return edges to supervisor
 g.add_edge("writer","supervisor")
 g.add_edge("researcher","supervisor")
+g.add_edge("editor","supervisor")
 
 # Supervisor routes
 def route(state):
@@ -33,6 +35,7 @@ def route(state):
 g.add_conditional_edges("supervisor",route,{
     "researcher":"researcher",
     "writer":"writer",
+    "editor":"editor",
     "FINISH":END
 })
 

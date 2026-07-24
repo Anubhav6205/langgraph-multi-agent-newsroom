@@ -9,6 +9,9 @@ class MessagesState(TypedDict):
     """State for the agents"""
     messages: Annotated[list[AnyMessage], operator.add]
     next: Annotated[int, "This tells the next action to supervisor"]
+    draft: str
+    critique: str
+    revisions: int
 
 
 

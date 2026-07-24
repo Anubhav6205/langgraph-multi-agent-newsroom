@@ -1,13 +1,13 @@
 from typing import Literal
 from langchain.chat_models import init_chat_model
-from langchain.messages import SystemMessage
+from langchain.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from state import MessagesState
-from logger import section, log_messages, log_out
+from logger import section, log_in, log_messages, log_out
 
 class Route(BaseModel):
     """Who will act next"""
-    next: Literal["researcher","writer","FINISH"] = Field(description="The next action will be taken up by which agent, or FINISH if the task is completed.")
+    next: Literal["researcher","writer","FINISH","editor"] = Field(description="The next action will be taken up by which agent, or FINISH if the task is completed.")
     cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
 
 
@@ -15,18 +15,22 @@ class Route(BaseModel):
 supervisor_llm = init_chat_model("gpt-5-mini",temperature=0).with_structured_output(Route)
 
 SUPERVISOR_SYS = SystemMessage(
-    "You are a supervisor of a newsroom and have two specialist under you: A researcher (gathers sourced facts via web search) and writer (drafts a brief from those facts). Read the conversation so far and decide who acts NEXT: \n"
-    "Invoke 'researcher' first always, for details on a topic, then invoke writer to write about the topic. Route one step at a time. Do not work yourself, only decide who is next actor"
-    "- 'researcher' if more facts /sources are needed before writing\n"
-    "- 'writer' once enough facts are gathered to draft and revise the brief"
-    "- 'FINISH' when a complete, well sources brief exist in the transcript"
+    "You are a supervisor of a newsroom. Route one step at a time using this STRICT sequence based on who spoke last:\n"
+    "- No agent has spoken yet → route to 'researcher'\n"
+    "- Last speaker was 'researcher' → route to 'writer'\n"
+    "- Last speaker was 'writer' → route to 'editor'\n"
+    "- Last speaker was 'editor' AND revision counter > 0 → route to 'writer'\n"
+    "- Last speaker was 'editor' AND revision counter == 0 → route to 'FINISH'\n"
+    "Do not deviate from this sequence. Do not route researcher again once writing has started."
     )
 
 def supervistor_agent(state: MessagesState):
     section("supervisor.py :: supervistor_agent", "bold blue")
+    log_in("revisions remaining", state["revisions"])
     log_messages(state["messages"])
 
-    respose = supervisor_llm.invoke([SUPERVISOR_SYS]+ state["messages"])
+    respose = supervisor_llm.invoke([SUPERVISOR_SYS]+ state["messages"] + [HumanMessage(content=f"Revision counter: {state['revisions']}")])
 
     log_out("supervisor decision → next", respose.next)
+    log_out("cause", respose.cause)
     return {"next": respose.next}
