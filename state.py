@@ -12,6 +12,9 @@ class MessagesState(TypedDict):
     draft: str
     critique: str
     revisions: int
+    approved: bool
+    final_pass: bool
+
 
 
 

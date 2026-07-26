@@ -16,7 +16,7 @@ writer_model = init_chat_model("gpt-5-mini",temperature=0).with_structured_outpu
 
 WRITER_SYS = SystemMessage(
     "You are a professional writer. Draft a concise brief from the research transcript. "
-    "If editor critique is provided, revise the draft to address every point raised. Use no tools."
+    "If critique is provided, revise the draft to address every point raised. Use no tools."
 )
 
 
@@ -33,6 +33,7 @@ def writer_agent(state: MessagesState):
 
     return {
         "messages": [AIMessage(content=response.brief, name="writer")],
-        "draft": response.brief
+        "draft": response.brief,
+        "critique": ""
     }
 

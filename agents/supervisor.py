@@ -18,9 +18,10 @@ SUPERVISOR_SYS = SystemMessage(
     "You are a supervisor of a newsroom. Route one step at a time using this STRICT sequence based on who spoke last:\n"
     "- No agent has spoken yet → route to 'researcher'\n"
     "- Last speaker was 'researcher' → route to 'writer'\n"
-    "- Last speaker was 'writer' → route to 'editor'\n"
-    "- Last speaker was 'editor' AND revision counter > 0 → route to 'writer'\n"
-    "- Last speaker was 'editor' AND revision counter == 0 → route to 'FINISH'\n"
+    "- Last speaker was 'writer' AND final_pass=False → route to 'editor'\n"
+    "- Last speaker was 'writer' AND final_pass=True → route to 'FINISH'\n"
+    "- Last speaker was 'editor' AND critique is not empty → route to 'writer'\n"
+    "- Last speaker was 'editor' AND critique is empty → route to 'FINISH'\n"
     "Do not deviate from this sequence. Do not route researcher again once writing has started."
     )
 
@@ -29,7 +30,7 @@ def supervistor_agent(state: MessagesState):
     log_in("revisions remaining", state["revisions"])
     log_messages(state["messages"])
 
-    respose = supervisor_llm.invoke([SUPERVISOR_SYS]+ state["messages"] + [HumanMessage(content=f"Revision counter: {state['revisions']}")])
+    respose = supervisor_llm.invoke([SUPERVISOR_SYS]+ state["messages"] + [HumanMessage(content=f"Revision counter: {state['revisions']} | Critique: {state.get('critique','')} | final_pass: {state.get('final_pass', False)}")])
 
     log_out("supervisor decision → next", respose.next)
     log_out("cause", respose.cause)

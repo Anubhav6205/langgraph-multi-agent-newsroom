@@ -6,9 +6,13 @@ from state import MessagesState
 from pydantic import BaseModel, Field
 from logger import section, log_in, log_out
 
-editor_model = init_chat_model("gpt-5-mini")
+class EditorOutput(BaseModel):
+    approved: bool = Field(description="True if draft meets all structure rules, False if changes are needed")
+    feedback: str = Field(description="Specific fixes for the writer. Empty string if approved.")
+
+editor_model = init_chat_model("gpt-5-mini").with_structured_output(EditorOutput)
 EDITOR_SYS = SystemMessage(content="""
-You are a strict editor. You receive:
+You are a lenient editor. You receive:
   1. The research findings the Writer was given.
   2. The Writer's current draft.
 
@@ -22,7 +26,7 @@ You must check the draft against this LOCKED STRUCTURE:
 ─────────────────────────────────────────
 
 Rules:
-- approved=True ONLY if ALL 5 structure rules are met AND every Key Finding
+- approved=True if almost ALL 5 structure rules are met AND every Key Finding
   traces back to something the Researcher actually found.
 - If a finding appears in the draft but NOT in the research data, mark it as
   hallucinated and set approved=False.
@@ -58,10 +62,13 @@ def editor_agent(state: MessagesState):
         ]
     )
 
-    log_out("critique[:120]", response.content[:120])
+    critique = "" if response.approved else response.feedback
+    summary = f"approved={response.approved} | feedback: {response.feedback[:80]}"
+    log_out("approved", response.approved)
+    log_out("critique[:80]", critique[:80] if critique else "(empty — approved)")
     log_out("revisions after decrement", state["revisions"] - 1)
     return {
-        "messages": [AIMessage(content=response.content, name="editor")],
-        "critique": response.content,
+        "messages": [AIMessage(content=summary, name="editor")],
+        "critique": critique,
         "revisions": state["revisions"] - 1,
     }
