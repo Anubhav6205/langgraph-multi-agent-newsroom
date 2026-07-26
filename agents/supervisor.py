@@ -25,8 +25,8 @@ SUPERVISOR_SYS = SystemMessage(
     "Do not deviate from this sequence. Do not route researcher again once writing has started."
     )
 
-def supervistor_agent(state: MessagesState):
-    section("supervisor.py :: supervistor_agent", "bold blue")
+def supervisor_agent(state: MessagesState):
+    section("supervisor.py :: supervisor_agent", "bold blue")
     log_in("revisions remaining", state["revisions"])
     log_messages(state["messages"])
 

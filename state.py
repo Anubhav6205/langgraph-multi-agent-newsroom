@@ -14,6 +14,7 @@ class MessagesState(TypedDict):
     revisions: int
     approved: bool
     final_pass: bool
+    error: str
 
 
 

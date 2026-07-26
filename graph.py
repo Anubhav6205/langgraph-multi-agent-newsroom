@@ -1,7 +1,8 @@
+from agents.guardrail import guardrail
 from agents.editor import editor_agent
 from agents.human_verify import human_verift_agent
 from agents.researcher import researcher_agent
-from agents.supervisor import supervistor_agent
+from agents.supervisor import supervisor_agent
 from agents.writer import writer_agent
 from state import MessagesState
 from langgraph.graph import END, START, StateGraph
@@ -11,14 +12,16 @@ from langgraph.checkpoint.memory import InMemorySaver
 g = StateGraph(MessagesState)
 
 # Adding nodes
-g.add_node("supervisor", supervistor_agent)
+g.add_node("supervisor", supervisor_agent)
 g.add_node("researcher", researcher_agent)
 g.add_node("writer", writer_agent)
 g.add_node("editor", editor_agent)
 g.add_node("human_verify", human_verift_agent)
+g.add_node("guardrail", guardrail)
+
 
 # Start node
-g.add_edge(START, "supervisor")
+g.add_edge(START, "guardrail")
 
 # Researcher and editor always return to supervisor
 g.add_edge("researcher", "supervisor")
