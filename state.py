@@ -15,6 +15,7 @@ class MessagesState(TypedDict):
     approved: bool
     final_pass: bool
     error: str
+    trajectory: Annotated[list[dict],operator.add]
 
 
 
@@ -26,3 +27,4 @@ class ResearchState(TypedDict):
     docs: list
     relevant: bool
     retryCount: int
+    trajectory: Annotated[list[dict],operator.add]

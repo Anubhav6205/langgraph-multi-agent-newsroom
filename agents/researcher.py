@@ -14,9 +14,14 @@ from tools.search_kb import search_kb
 
 tools = [web_search, search_kb]
 
+
 class Route(BaseModel):
-    content : str = Field(description = "Researched content")
-    cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
+    content: str = Field(description="Researched content")
+    cause: str = Field(
+        description="Explain in strictly less than 20 words why you took the descision."
+    )
+
+
 researcher_model = init_chat_model("gpt-5-mini", temperature=0).bind_tools(tools)
 
 RESEARCHER_SYS = SystemMessage(
@@ -41,12 +46,21 @@ def _agent(state: ResearchState):
     section("researcher.py :: _agent (inner LLM node)", "bold yellow")
     log_messages(state["messages"])
 
-    response = researcher_model.invoke([f"{RESEARCHER_SYS} + Retry Count: {state['retryCount']}"] + state["messages"])
+    response = researcher_model.invoke(
+        [f"{RESEARCHER_SYS} + Retry Count: {state['retryCount']}"] + state["messages"]
+    )
+
+    tool_calls = [{"node":"researcher", "tool": t["name"]} for t in response.tool_calls]
 
     log_out("response type", type(response).__name__)
     log_out("tool_calls", response.tool_calls)
     log_out("content[:80]", str(response.content)[:80])
-    return {"messages": [response],"query": state["messages"][-1].content, "retryCount": state['retryCount']-1}
+    return {
+        "messages": [response],
+        "query": state["messages"][-1].content,
+        "retryCount": state["retryCount"] - 1,
+        "trajectory": tool_calls,
+    }
 
 
 _r = StateGraph(ResearchState)
@@ -57,7 +71,7 @@ def researcher_agent(state):
     log_in("messages count", len(state["messages"]))
     log_in("_researcher_graph type", type(_researcher_graph).__name__)
 
-    out = _researcher_graph.invoke({"messages": state["messages"], "retryCount":2})
+    out = _researcher_graph.invoke({"messages": state["messages"], "retryCount": 2})
 
     log_out("inner graph output messages count", len(out["messages"]))
     last = out["messages"][-1]
@@ -65,7 +79,10 @@ def researcher_agent(state):
         "last msg",
         f"type={type(last).__name__} | content[:80]={str(last.content)[:80]!r}",
     )
-    return {"messages": [AIMessage(content=last.content, name="researcher")]}
+    return {
+        "messages": [AIMessage(content=last.content, name="researcher")],
+        "trajectory": out["trajectory"],
+    }
 
 
 # Setting up grader
@@ -77,7 +94,9 @@ class Grade(BaseModel):
     relevant: bool = Field(
         description="True if the document provided are relevant to the query, else false."
     )
-    cause: str = Field(description="Explain in strictly less than 20 words why you took the descision.")
+    cause: str = Field(
+        description="Explain in strictly less than 20 words why you took the descision."
+    )
 
 
 grader = init_chat_model("gpt-5-mini", temperature=0).with_structured_output(Grade)
@@ -118,13 +137,12 @@ def rewrite_query_agent(state: ResearchState):
         ],
     }
 
+
 def extract_docs(state: ResearchState):
     last_tool_msg = state["messages"][-1]
     docs_content = last_tool_msg.content
-    return {
-        "docs": [docs_content]
-    
-    }
+    return {"docs": [docs_content]}
+
 
 # Adding the nodes
 _r.add_node("agent", _agent)
@@ -136,7 +154,6 @@ _r.add_node("extract_docs", extract_docs)
 # Creating edges
 _r.add_edge("tools", "extract_docs")
 _r.add_edge("extract_docs", "grade")
-
 
 
 def route_grade(state):

@@ -38,10 +38,10 @@ def guardrail(state: MessagesState):
         return Command(goto=END, update={"error": response.reason})
 
     return Command(
-        goto=supervisor,
+        goto="supervisor",
         update={
             "message": [
-                AIMessage(content=f"Status:{response.reason}", name="guardrail")
+                AIMessage(content=f"Status:{response.reason}")
             ]
         },
     )

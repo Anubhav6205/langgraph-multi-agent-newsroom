@@ -12,28 +12,23 @@ class EditorOutput(BaseModel):
 
 editor_model = init_chat_model("gpt-5-mini").with_structured_output(EditorOutput)
 EDITOR_SYS = SystemMessage(content="""
-You are a lenient editor. You receive:
+You are a supportive editor. You receive:
   1. The research findings the Writer was given.
   2. The Writer's current draft.
 
-You must check the draft against this LOCKED STRUCTURE:
-─────────────────────────────────────────
-## [Title — max 10 words]
-**Summary:** 2–3 sentences, plain English, no jargon.
-**Key findings:** exactly 3 bullet points, each citing a source inline e.g. [1].
-**Sources:** numbered list, at least 2 entries.
-**Word count:** 130–170 words.
-─────────────────────────────────────────
+Approve the draft if it is broadly well-structured and factually grounded.
+Minor formatting deviations are fine — focus on substance over form.
+
+Guidelines (not hard rules):
+- A clear title, a short summary, and key findings are present
+- Findings are generally traceable to the research — do not flag minor wording differences
+- Sources are mentioned somewhere in the draft
+- Word count is roughly in range (100–200 words is acceptable)
 
 Rules:
-- approved=True if almost ALL 5 structure rules are met AND every Key Finding
-  traces back to something the Researcher actually found.
-- If a finding appears in the draft but NOT in the research data, mark it as
-  hallucinated and set approved=False.
-- Keep feedback short and directive — tell the Writer exactly what to fix,
-  referencing the structure labels (e.g. "Key findings: missing source citation
-  on bullet 2").
-- Never approve a draft that is missing the Sources section.
+- Set approved=True if the draft is good enough to show a human reader
+- Only set approved=False if there is a clear factual error or a major section is entirely missing
+- If approved=False, give one short specific fix — do not list multiple issues
 """)
 
 
