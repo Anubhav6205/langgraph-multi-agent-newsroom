@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+rich
+langchain
+langchain-chroma
+langchain-community
+langchain-core
+langchain-openai
+langchain-tavily
+langchain-text-splitters
+langgraph
+pypdf

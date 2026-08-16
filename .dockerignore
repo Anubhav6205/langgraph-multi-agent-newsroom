@@ -1,0 +1,8 @@
+.env
+/kb/chroma_db
+
+__pycache__
+.langgraph_api
+.vscode
+*.pyc
+.git

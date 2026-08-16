@@ -1,0 +1,20 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: research-app
+    restart: unless-stopped
+
+
+    ports:
+      - "${PORT}:8000"
+
+
+    env_file:
+      - .env
+
+
+    volumes:
+      - ./kb:/app/kb
+      
