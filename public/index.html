@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Agent Newsroom (LangGraph) - project showcase</title>
+<meta name="description" content="Showcase of a LangGraph multi-agent research and writing system with a supervisor, corrective RAG and guardrails.">
+<style>
+:root{--bg:#0f1218;--panel:#171c26;--line:#2a3243;--text:#e6e9f0;--mute:#9aa4b8;--accent:#6ea8fe;--ok:#5fd3a0;--warn:#f0b861;--bad:#f07a7a}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+main{max-width:980px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:1.9rem;margin:0 0 6px}
+h2{font-size:1.3rem;margin:40px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+h3{font-size:1.05rem;margin:0 0 4px}
+p{margin:8px 0}
+a{color:var(--accent)}
+code{background:#0b0e14;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:.88em}
+.notice{background:#2a2414;border:1px solid #5b4a1c;border-radius:8px;padding:12px 14px;margin:18px 0;color:#f3deb0}
+.links a{display:inline-block;margin-right:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.card p{color:var(--mute);font-size:.94rem;margin:4px 0}
+.sub{color:var(--mute)}
+svg text{font:13px system-ui,sans-serif;fill:var(--text)}
+.node rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5;transition:all .2s}
+.node.active rect{stroke:var(--accent);fill:#1b2740;stroke-width:2.5}
+.node.end rect{stroke:var(--ok)}
+.edge{stroke:#4a5470;stroke-width:1.5;fill:none;marker-end:url(#arr)}
+.dash{stroke-dasharray:4 3}
+svg text.lbl{fill:var(--mute);font-size:11px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+button,select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 12px;font:inherit;font-size:.92rem;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+#log{margin:10px 0;padding:0;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;max-height:300px;overflow:auto}
+#log li{padding:8px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
+#log li:last-child{border-bottom:0}
+#log li b{color:var(--accent)}
+#log li.cur{background:#1b2740}
+pre{background:#0b0e14;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-size:.85rem;margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel)}
+footer{margin-top:48px;color:var(--mute);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Multi-Agent Newsroom (LangGraph)</h1>
+<p class="sub">A research-and-writing assistant with a supervisor, a corrective RAG researcher, a guardrail and a human review step. Python, LangGraph, LangChain, FastAPI.</p>
+<p class="links">
+<a href="https://github.com/Anubhav6205/langgraph-multi-agent-newsroom">Source on GitHub</a>
+<a href="https://www.linkedin.com/in/anubhavgupta8">LinkedIn</a>
+</p>
+
+<div class="notice"><b>This is a project showcase, not the live app.</b> The real system calls OpenAI (<code>gpt-5-mini</code>), Tavily and a local Chroma vector store, so it needs API keys and a running server. Those do not fit a free static deployment. This page shows the architecture and lets you step through the graph's control flow. The steps are illustrative and follow the routing rules in the code. No model is called and no generated text is shown.</div>
+
+<h2>Graph</h2>
+<p>The outer graph is defined in <code>graph.py</code>. Pick a scenario below to see which node runs at each step.</p>
+
+<svg viewBox="0 0 900 260" width="100%" role="img" aria-label="Outer graph: guardrail, supervisor, researcher, writer, editor, human verify">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#4a5470"/></marker></defs>
+<path class="edge" d="M92 125 H150"/>
+<path class="edge" d="M290 125 H350"/>
+<path class="edge" d="M420 100 V55 H480"/>
+<path class="edge" d="M490 125 H540"/>
+<path class="edge" d="M420 150 V190 H480"/>
+<path class="edge" d="M640 125 H700"/>
+<path class="edge dash" d="M630 200 H800 V214"/>
+<path class="edge" d="M765 150 V232 H780" style="display:none"/>
+<path class="edge dash" d="M220 150 V250 H825 V224"/>
+<text class="lbl" x="296" y="118">safe</text>
+<text class="lbl" x="654" y="118">FINISH</text>
+<text class="lbl" x="650" y="194">final pass</text>
+<text class="lbl" x="232" y="244">blocked: END with error</text>
+<text class="lbl" x="352" y="75">researcher, writer, editor</text>
+<text class="lbl" x="352" y="92">report back to supervisor</text>
+<g class="node" id="n-start"><rect x="10" y="108" width="82" height="34" rx="17"/><text x="51" y="130" text-anchor="middle">START</text></g>
+<g class="node" id="n-guardrail"><rect x="150" y="100" width="140" height="50" rx="8"/><text x="220" y="130" text-anchor="middle">Guardrail</text></g>
+<g class="node" id="n-supervisor"><rect x="350" y="100" width="140" height="50" rx="8"/><text x="420" y="130" text-anchor="middle">Supervisor</text></g>
+<g class="node" id="n-researcher"><rect x="480" y="30" width="150" height="50" rx="8"/><text x="555" y="60" text-anchor="middle">Researcher (CRAG)</text></g>
+<g class="node" id="n-writer"><rect x="480" y="165" width="150" height="50" rx="8"/><text x="555" y="195" text-anchor="middle">Writer</text></g>
+<g class="node" id="n-editor"><rect x="540" y="100" width="100" height="50" rx="8"/><text x="590" y="130" text-anchor="middle">Editor</text></g>
+<g class="node" id="n-human"><rect x="700" y="100" width="130" height="50" rx="8"/><text x="765" y="130" text-anchor="middle">Human verify</text></g>
+<g class="node end" id="n-end"><rect x="780" y="190" width="90" height="34" rx="17"/><text x="825" y="212" text-anchor="middle">END</text></g>
+</svg>
+<p class="sub" style="font-size:.88rem">The supervisor picks the next node with a structured output, and an <code>InMemorySaver</code> checkpointer holds state per thread. The human step can also send the draft back to the writer (see the "Human declines" scenario).</p>
+
+<h2>Step through a run</h2>
+<div class="controls">
+<select id="scn" aria-label="Scenario"></select>
+<button id="prev">Back</button>
+<button id="next">Next step</button>
+<button id="reset">Reset</button>
+</div>
+<p id="desc" class="sub"></p>
+<ol id="log"></ol>
+
+<h2>Corrective RAG researcher</h2>
+<p>The researcher is its own compiled graph (<code>agents/researcher.py</code>). It retrieves, grades what came back, and rewrites the query if the results are not relevant. Choose the "Researcher: corrective RAG loop" scenario above to step through it.</p>
+<svg viewBox="0 0 900 190" width="100%" role="img" aria-label="Inner researcher graph">
+<path class="edge" d="M120 93 H170"/>
+<path class="edge" d="M300 93 H345"/>
+<path class="edge" d="M465 93 H510"/>
+<path class="edge" d="M610 80 H640 V45 H65 V70"/>
+<path class="edge dash" d="M610 100 H640 V150 H680"/>
+<path class="edge dash" d="M740 170 V182 H65 V116"/>
+<path class="edge" d="M65 70 V45" style="display:none"/>
+<path class="edge" d="M120 85 H140" style="display:none"/>
+<text class="lbl" x="160" y="38">relevant: back to agent to synthesize (no tool call ends the loop)</text>
+<text class="lbl" x="560" y="143">not relevant</text>
+<g class="node" id="r-agent"><rect x="10" y="70" width="110" height="46" rx="8"/><text x="65" y="98" text-anchor="middle">agent (LLM)</text></g>
+<g class="node" id="r-tools"><rect x="170" y="70" width="130" height="46" rx="8"/><text x="235" y="98" text-anchor="middle">tools (KB / web)</text></g>
+<g class="node" id="r-extract"><rect x="345" y="70" width="120" height="46" rx="8"/><text x="405" y="98" text-anchor="middle">extract_docs</text></g>
+<g class="node" id="r-grade"><rect x="510" y="70" width="100" height="46" rx="8"/><text x="560" y="98" text-anchor="middle">grade</text></g>
+<g class="node" id="r-rewrite"><rect x="680" y="130" width="120" height="40" rx="8"/><text x="740" y="155" text-anchor="middle">rewrite query</text></g>
+<g class="node end" id="r-end"><rect x="780" y="73" width="80" height="34" rx="17"/><text x="820" y="95" text-anchor="middle">END</text></g>
+</svg>
+<p class="sub" style="font-size:.88rem">When the agent answers without a tool call, <code>tools_condition</code> routes to END and the outer wrapper returns the last message to the supervisor.</p>
+
+<h2>What each part does</h2>
+<div class="grid">
+<div class="card"><h3>Guardrail</h3><p>Screens the request before any other agent runs. Blocks prompt-extraction attempts, personal-data requests, off-topic input and obvious jailbreak patterns. A blocked request ends the run with an error reason.</p></div>
+<div class="card"><h3>Supervisor</h3><p>Routes one step at a time with a strict sequence: researcher, then writer, then editor, then back to the writer if the editor left a critique, otherwise FINISH.</p></div>
+<div class="card"><h3>Researcher</h3><p>Uses a local Chroma knowledge base built from <code>kb/knowledge.pdf</code>, with Tavily web search as a fallback. Tool output is treated as untrusted data.</p></div>
+<div class="card"><h3>Writer</h3><p>Drafts a short brief from the research. If the editor or the human left feedback, it revises to address it.</p></div>
+<div class="card"><h3>Editor</h3><p>Approves the draft or returns one short fix. Each editor pass decrements a revision counter.</p></div>
+<div class="card"><h3>Human verify</h3><p>Pauses the graph with a LangGraph <code>interrupt</code> and shows the draft. If the reviewer declines, the writer revises once more and the run ends.</p></div>
+</div>
+
+<h2>State</h2>
+<table>
+<tr><th>Field</th><th>Purpose</th></tr>
+<tr><td><code>messages</code></td><td>Conversation, appended with <code>operator.add</code></td></tr>
+<tr><td><code>next</code></td><td>Supervisor's routing decision</td></tr>
+<tr><td><code>draft</code>, <code>critique</code></td><td>Current brief and the editor's requested fix</td></tr>
+<tr><td><code>revisions</code></td><td>Revision counter, starts at 2 from the API</td></tr>
+<tr><td><code>approved</code>, <code>final_pass</code></td><td>Human decision and the flag that sends the writer to END</td></tr>
+<tr><td><code>error</code></td><td>Reason set when the guardrail blocks a request</td></tr>
+<tr><td><code>trajectory</code></td><td>Log of tool calls made by the researcher</td></tr>
+</table>
+
+<h2>API</h2>
+<p>The FastAPI app in <code>api/main.py</code> exposes:</p>
+<pre>POST /details          { "task": "...", "thread_id": "demo" }  -> { "draft": ..., "error": ... }
+POST /details/stream   server-sent events with writer tokens, ends with [DONE]</pre>
+<p>It can also run in LangGraph Studio through <code>langgraph.json</code>, or in Docker with <code>docker compose up --build</code>.</p>
+
+<h2>Run it yourself</h2>
+<pre>git clone https://github.com/Anubhav6205/langgraph-multi-agent-newsroom
+cd langgraph-multi-agent-newsroom
+cp .env.example .env      # add OPENAI_API_KEY and TAVILY_API_KEY
+pip install -r requirements.txt
+python kb/kb.py           # build the Chroma knowledge base
+uvicorn api.main:app --port 8000</pre>
+
+<footer>Built by Anubhav Gupta. <a href="https://github.com/Anubhav6205/langgraph-multi-agent-newsroom">GitHub</a> | <a href="https://www.linkedin.com/in/anubhavgupta8">LinkedIn</a></footer>
+</main>
+
+<script>
+// Each step: [outer node id, inner node id or null, text]
+var S = {
+ happy: {
+  title: "Approved on the first pass",
+  desc: "The request passes the guardrail, the editor approves the first draft, and the human accepts it.",
+  steps: [
+   ["guardrail",null,"<b>Guardrail</b> checks the task. Verdict: safe."],
+   ["supervisor",null,"<b>Supervisor</b>: no agent has spoken yet, so route to the researcher."],
+   ["researcher","agent","<b>Researcher</b> runs its inner graph and returns findings with sources."],
+   ["supervisor",null,"<b>Supervisor</b>: last speaker was the researcher, so route to the writer."],
+   ["writer",null,"<b>Writer</b> drafts a brief and stores it in <code>draft</code>."],
+   ["supervisor",null,"<b>Supervisor</b>: last speaker was the writer and <code>final_pass</code> is false, so route to the editor."],
+   ["editor",null,"<b>Editor</b> approves. <code>critique</code> stays empty and <code>revisions</code> drops by one."],
+   ["supervisor",null,"<b>Supervisor</b>: editor approved with an empty critique, so FINISH."],
+   ["human",null,"<b>Human verify</b> interrupts and shows the draft. The reviewer accepts."],
+   ["end",null,"Run ends with <code>approved = true</code>."]
+  ]},
+ revise: {
+  title: "Editor asks for a revision",
+  desc: "The editor returns a critique, the writer revises, and the editor approves the second draft.",
+  steps: [
+   ["guardrail",null,"<b>Guardrail</b>: safe."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the researcher."],
+   ["researcher","agent","<b>Researcher</b> returns findings."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the writer."],
+   ["writer",null,"<b>Writer</b> drafts a brief."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the editor."],
+   ["editor",null,"<b>Editor</b> does not approve and sets <code>critique</code> to one short fix."],
+   ["supervisor",null,"<b>Supervisor</b>: last speaker was the editor and the critique is not empty, so route to the writer."],
+   ["writer",null,"<b>Writer</b> revises to address the critique and clears it."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the editor again."],
+   ["editor",null,"<b>Editor</b> approves this time."],
+   ["supervisor",null,"<b>Supervisor</b>: FINISH."],
+   ["human",null,"<b>Human verify</b> shows the draft and the reviewer accepts."],
+   ["end",null,"Run ends."]
+  ]},
+ block: {
+  title: "Guardrail blocks the request",
+  desc: "A request such as an attempt to reveal the system prompt never reaches the other agents.",
+  steps: [
+   ["guardrail",null,"<b>Guardrail</b> flags the request as unsafe (for example, a prompt-extraction attempt)."],
+   ["end",null,"The run goes straight to END with the guardrail's reason in <code>error</code>. No research or writing happens."]
+  ]},
+ decline: {
+  title: "Human declines the draft",
+  desc: "The reviewer asks for changes, so the writer gets one final pass and the run ends.",
+  steps: [
+   ["guardrail",null,"<b>Guardrail</b>: safe."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the researcher."],
+   ["researcher","agent","<b>Researcher</b> returns findings."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the writer."],
+   ["writer",null,"<b>Writer</b> drafts a brief."],
+   ["supervisor",null,"<b>Supervisor</b>: route to the editor."],
+   ["editor",null,"<b>Editor</b> approves."],
+   ["supervisor",null,"<b>Supervisor</b>: FINISH."],
+   ["human",null,"<b>Human verify</b> interrupts. The reviewer declines and gives suggestions."],
+   ["writer",null,"The graph sets <code>final_pass = true</code> and sends the suggestions to the <b>Writer</b>."],
+   ["end",null,"Because <code>final_pass</code> is true, the writer routes to END instead of back to the supervisor."]
+  ]},
+ crag: {
+  title: "Researcher: corrective RAG loop",
+  desc: "Inside the researcher, the first retrieval is graded as not relevant, so the query is rewritten and tried again.",
+  steps: [
+   ["researcher","agent","<b>agent</b> reads the task and decides to call a search tool."],
+   ["researcher","tools","<b>tools</b> executes the call (<code>search_kb</code> or <code>web_search</code>)."],
+   ["researcher","extract","<b>extract_docs</b> copies the tool output into <code>docs</code>."],
+   ["researcher","grade","<b>grade</b> compares <code>docs</code> to the query. Result: not relevant."],
+   ["researcher","rewrite","<b>rewrite</b> produces a more specific query and adds it as a new message."],
+   ["researcher","agent","<b>agent</b> sees the new message and searches again."],
+   ["researcher","tools","<b>tools</b> runs the new search."],
+   ["researcher","extract","<b>extract_docs</b> stores the new results."],
+   ["researcher","grade","<b>grade</b>: relevant."],
+   ["researcher","agent","<b>agent</b> synthesizes findings with no tool call."],
+   ["researcher","end","<code>tools_condition</code> routes to END. The findings go back to the supervisor."]
+  ]}
+};
+var outerIds=["start","guardrail","supervisor","researcher","writer","editor","human","end"];
+var innerIds=["agent","tools","extract","grade","rewrite","end"];
+var sel=document.getElementById("scn"),log=document.getElementById("log"),desc=document.getElementById("desc");
+var prev=document.getElementById("prev"),next=document.getElementById("next");
+var key="happy",i=-1;
+for(var k in S){var o=document.createElement("option");o.value=k;o.textContent=S[k].title;sel.appendChild(o)}
+function el(id){return document.getElementById(id)}
+function clearAll(){
+ outerIds.forEach(function(n){el("n-"+n).classList.remove("active")});
+ innerIds.forEach(function(n){el("r-"+n).classList.remove("active")});
+}
+function render(){
+ var sc=S[key];desc.textContent=sc.desc;log.innerHTML="";clearAll();
+ for(var j=0;j<=i;j++){var li=document.createElement("li");li.innerHTML=sc.steps[j][2];if(j===i)li.className="cur";log.appendChild(li)}
+ if(i>=0){
+  var o=sc.steps[i][0],inn=sc.steps[i][1];
+  if(inn){el("r-"+inn).classList.add("active");el("n-researcher").classList.add("active")}
+  else el("n-"+o).classList.add("active");
+  log.scrollTop=log.scrollHeight;
+ }
+ prev.disabled=i<0;next.disabled=i>=sc.steps.length-1;
+}
+sel.onchange=function(){key=sel.value;i=-1;render()};
+next.onclick=function(){if(i<S[key].steps.length-1){i++;render()}};
+prev.onclick=function(){if(i>=0){i--;render()}};
+el("reset").onclick=function(){i=-1;render()};
+render();
+</script>
+</body>
+</html>

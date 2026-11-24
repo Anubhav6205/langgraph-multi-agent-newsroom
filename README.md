@@ -1,5 +1,7 @@
 # Multi-Agent Newsroom (LangGraph)
 
+**Live demo:** https://langgraph-multi-agent-newsroom.vercel.app (project showcase with an architecture diagram and a step-through of the graph. It is not the running app, which needs OpenAI and Tavily keys.)
+
 A research-and-writing assistant built as a LangGraph multi-agent system. A supervisor routes a task between a researcher, a writer and an editor, a guardrail screens requests first, and a human-review step approves the final draft. It is served through FastAPI.
 
 **Status:** working prototype. Setup below was written from the code and has not been re-run from a clean machine.
@@ -99,7 +101,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Contact
 
-Anubhav Gupta, [LinkedIn](https://www.linkedin.com/in/anubhav-gupta-92410a244/)
+Anubhav Gupta, [LinkedIn](https://www.linkedin.com/in/anubhavgupta8)
 
 ## Researcher node responsibilities
 
